@@ -1,7 +1,7 @@
 package com.rent_manager.app.controller;
 
 
-import com.rent_manager.app.dto.HouseDto;
+import com.rent_manager.app.dto.HouseWithOwnerDTO;
 import com.rent_manager.app.model.Houses;
 import com.rent_manager.app.model.Owner;
 import com.rent_manager.app.service.HousesService;
@@ -26,30 +26,37 @@ public class HousesController {
     //endregion
 
     @GetMapping("/listHouses")
-    public List<Houses> getHouses(){
-        return housesService.getHouses();
+    public ResponseEntity<List<Houses>> getHouses(){
+        return ResponseEntity.ok(housesService.getHouses());
     }
 
     @PostMapping("/addHouse")
-    public ResponseEntity<String> addHouse(@RequestBody HouseDto houseDto ){
+    public ResponseEntity<String> addHouse(@RequestBody HouseWithOwnerDTO houseWithOwnerDTO ){
         try{
+            Owner owner = ownerService.
+                    findByEmail(houseWithOwnerDTO.getOwnerDto().getEmail())
+                    .orElseGet( () -> {
+                            var newOwner = new Owner(houseWithOwnerDTO.getOwnerDto());
+                            ownerService.saveOwner(newOwner);
+                            return newOwner;
+                        }
+                    );
 
-            // Recuperar el propietario a partir de su id
-            Owner owner = ownerService.findById(houseDto.getOwnerId());
 
-            if (owner == null)
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .build();
-
-            Houses house = new Houses(
-                houseDto.getAddress(),
-                houseDto.getPrice(),
-                owner,
-                houseDto.getUserId(),
-                houseDto.getExtraData()
+            housesService.saveHouse(
+                new Houses(
+                    houseWithOwnerDTO.getHouseDto().getAddress(),
+                    houseWithOwnerDTO.getHouseDto().getPrice(),
+                    owner,
+                    houseWithOwnerDTO.getHouseDto().getUserId(),
+                    houseWithOwnerDTO.getHouseDto().getNumberOfRooms(),
+                    houseWithOwnerDTO.getHouseDto().getNumberOfBaths(),
+                    houseWithOwnerDTO.getHouseDto().getMaxOccupancy(),
+                    houseWithOwnerDTO.getHouseDto().getGoodForKids(),
+                    houseWithOwnerDTO.getHouseDto().getHasParkingSpot(),
+                    houseWithOwnerDTO.getHouseDto().getAreaM2()
+                )
             );
-
-            housesService.saveHouse(house);
 
             return ResponseEntity.ok("Agregada con éxito");
         }catch (Exception e){
